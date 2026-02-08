@@ -299,6 +299,7 @@ export async function monitorSignalProvider(opts: MonitorSignalOpts = {}): Promi
         ? accountInfo.config.allowFrom
         : []),
   );
+  const groupRequireOneOf = normalizeAllowList(accountInfo.config.groupRequireOneOf);
   const defaultGroupPolicy = cfg.channels?.defaults?.groupPolicy;
   const groupPolicy = accountInfo.config.groupPolicy ?? defaultGroupPolicy ?? "allowlist";
   const reactionMode = accountInfo.config.reactionNotifications ?? "own";
@@ -362,6 +363,7 @@ export async function monitorSignalProvider(opts: MonitorSignalOpts = {}): Promi
       dmPolicy,
       allowFrom,
       groupAllowFrom,
+      groupRequireOneOf,
       groupPolicy,
       reactionMode,
       reactionAllowlist,

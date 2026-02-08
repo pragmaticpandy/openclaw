@@ -57,6 +57,7 @@ describe("signal event handler typing + read receipts", () => {
       textLimit: 4000,
       dmPolicy: "open",
       allowFrom: ["*"],
+      groupRequireOneOf: [],
       groupAllowFrom: ["*"],
       groupPolicy: "open",
       reactionMode: "off",
