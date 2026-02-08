@@ -461,6 +461,18 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
         return;
       }
     }
+    // Eagerly invalidate group membership cache on group update events
+    // (empty message body = member added/removed, name changed, etc.).
+    // This must happen BEFORE the gate check so that a newly-added
+    // required member is visible immediately, not after cache TTL.
+    const messageText_ = (dataMessage.message ?? "").trim();
+    const hasAttachments = Boolean(dataMessage.attachments?.length);
+    const hasQuote = Boolean(dataMessage.quote?.text?.trim());
+    if (isGroup && groupId && deps.groupRequireOneOf.length > 0 && !messageText_ && !hasAttachments && !hasQuote) {
+      logVerbose(`signal: pre-gate cache invalidation for group ${groupId} (empty body event)`);
+      invalidateGroupMembershipCache(groupId);
+    }
+
     // Group membership gate: require at least one specified number to be a member
     if (isGroup && deps.groupRequireOneOf.length > 0 && groupId) {
       try {
