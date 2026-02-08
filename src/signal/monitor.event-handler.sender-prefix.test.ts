@@ -51,6 +51,7 @@ describe("signal event handler sender prefix", () => {
       textLimit: 4000,
       dmPolicy: "open",
       allowFrom: [],
+      groupRequireOneOf: [],
       groupAllowFrom: [],
       groupPolicy: "open",
       reactionMode: "off",

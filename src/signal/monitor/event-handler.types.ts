@@ -71,6 +71,7 @@ export type SignalEventHandlerDeps = {
   dmPolicy: DmPolicy;
   allowFrom: string[];
   groupAllowFrom: string[];
+  groupRequireOneOf: string[];
   groupPolicy: GroupPolicy;
   reactionMode: SignalReactionNotificationMode;
   reactionAllowlist: string[];

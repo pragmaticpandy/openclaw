@@ -1,4 +1,5 @@
 import type { SignalEventHandlerDeps, SignalReceivePayload } from "./event-handler.types.js";
+import { checkGroupHasRequiredMember, invalidateGroupMembershipCache } from "../groups.js";
 import { resolveHumanDelayConfig } from "../../agents/identity.js";
 import { hasControlCommand } from "../../auto-reply/command-detection.js";
 import { dispatchInboundMessage } from "../../auto-reply/dispatch.js";
@@ -460,6 +461,39 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
         return;
       }
     }
+    // Eagerly invalidate group membership cache on group update events
+    // (empty message body = member added/removed, name changed, etc.).
+    // This must happen BEFORE the gate check so that a newly-added
+    // required member is visible immediately, not after cache TTL.
+    const messageText_ = (dataMessage.message ?? "").trim();
+    const hasAttachments = Boolean(dataMessage.attachments?.length);
+    const hasQuote = Boolean(dataMessage.quote?.text?.trim());
+    if (isGroup && groupId && deps.groupRequireOneOf.length > 0 && !messageText_ && !hasAttachments && !hasQuote) {
+      logVerbose(`signal: pre-gate cache invalidation for group ${groupId} (empty body event)`);
+      invalidateGroupMembershipCache(groupId);
+    }
+
+    // Group membership gate: require at least one specified number to be a member
+    if (isGroup && deps.groupRequireOneOf.length > 0 && groupId) {
+      try {
+        const hasRequired = await checkGroupHasRequiredMember(groupId, deps.groupRequireOneOf, {
+          baseUrl: deps.baseUrl,
+          account: deps.account,
+        });
+        if (!hasRequired) {
+          logVerbose(
+            `Blocked signal group ${groupId} (no required member found via groupRequireOneOf)`,
+          );
+          return;
+        }
+      } catch (err) {
+        logVerbose(
+          `signal groupRequireOneOf check failed for ${groupId}: ${String(err)} — blocking message`,
+        );
+        return;
+      }
+    }
+
     if (isGroup && deps.groupPolicy === "disabled") {
       logVerbose("Blocked signal group message (groupPolicy: disabled)");
       return;
@@ -531,6 +565,13 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
 
     const bodyText = messageText || placeholder || dataMessage.quote?.text?.trim() || "";
     if (!bodyText) {
+      // No text content in a group message typically means a group update
+      // (member added/removed, name changed, etc.). Invalidate the membership
+      // cache so the next real message triggers a fresh check.
+      if (isGroup && groupId && deps.groupRequireOneOf.length > 0) {
+        logVerbose(`signal: invalidating membership cache for group ${groupId} (empty body)`);
+        invalidateGroupMembershipCache(groupId);
+      }
       return;
     }
 

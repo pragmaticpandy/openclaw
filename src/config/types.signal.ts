@@ -45,6 +45,12 @@ export type SignalAccountConfig = {
   /** Optional allowlist for Signal group senders (E.164). */
   groupAllowFrom?: Array<string | number>;
   /**
+   * Require at least one of these phone numbers (E.164) to be a member of
+   * the group before accepting any messages from it. Independent of groupPolicy.
+   * If unset, no membership check is performed (backwards compatible).
+   */
+  groupRequireOneOf?: Array<string | number>;
+  /**
    * Controls how group messages are handled:
    * - "open": groups bypass allowFrom, no extra gating
    * - "disabled": block all group messages

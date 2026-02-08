@@ -4,7 +4,7 @@ export type SignalSender =
   | { kind: "phone"; raw: string; e164: string }
   | { kind: "uuid"; raw: string };
 
-type SignalAllowEntry =
+export type SignalAllowEntry =
   | { kind: "any" }
   | { kind: "phone"; e164: string }
   | { kind: "uuid"; raw: string };
@@ -69,7 +69,7 @@ export function resolveSignalPeerId(sender: SignalSender): string {
   return sender.kind === "phone" ? sender.e164 : `uuid:${sender.raw}`;
 }
 
-function parseSignalAllowEntry(entry: string): SignalAllowEntry | null {
+export function parseSignalAllowEntry(entry: string): SignalAllowEntry | null {
   const trimmed = entry.trim();
   if (!trimmed) {
     return null;
