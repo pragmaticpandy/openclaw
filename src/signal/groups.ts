@@ -12,6 +12,7 @@
 
 import { signalRpcRequest } from "./client.js";
 import { normalizeE164 } from "../utils.js";
+import { parseSignalAllowEntry } from "./identity.js";
 
 export type SignalGroupMember = {
   number?: string | null;
@@ -146,13 +147,15 @@ export async function resolveSignalGroupId(
 }
 
 /**
- * Check whether a group contains at least one member whose phone number
- * matches the `requiredNumbers` list.
+ * Check whether a group contains at least one member matching the
+ * `requiredEntries` list. Entries are parsed using the same logic as
+ * `allowFrom`/`groupAllowFrom` — supports E.164 phone numbers, UUIDs,
+ * `uuid:` prefixes, and `*` wildcard.
  *
  * Uses a per-group membership cache (60s TTL) that can be invalidated
  * by group update events via `invalidateGroupMembershipCache`.
  *
- * @returns true if any required number is found in the group's member list.
+ * @returns true if any required entry matches a group member.
  */
 export async function checkGroupHasRequiredMember(
   groupId: string,
@@ -193,15 +196,33 @@ export async function checkGroupHasRequiredMember(
 
   const members = group.members ?? [];
 
-  // Normalize required numbers for comparison
-  const normalizedRequired = new Set(
-    requiredNumbers.map((n) => normalizeE164(String(n))).filter(Boolean),
+  // Parse required entries using the same logic as allowFrom/groupAllowFrom
+  const parsedRequired = requiredNumbers
+    .map((n) => parseSignalAllowEntry(String(n)))
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+  // Wildcard "*" → always allowed
+  if (parsedRequired.some((entry) => entry.kind === "any")) {
+    membershipCache.set(cacheKey, { allowed: true, cachedAt: now });
+    return true;
+  }
+
+  const requiredPhones = new Set(
+    parsedRequired.filter((e) => e.kind === "phone").map((e) => (e as { kind: "phone"; e164: string }).e164),
+  );
+  const requiredUuids = new Set(
+    parsedRequired.filter((e) => e.kind === "uuid").map((e) => (e as { kind: "uuid"; raw: string }).raw),
   );
 
   const allowed = members.some((member) => {
-    if (!member.number) return false;
-    const normalized = normalizeE164(member.number);
-    return normalized ? normalizedRequired.has(normalized) : false;
+    if (member.number) {
+      const normalized = normalizeE164(member.number);
+      if (normalized && requiredPhones.has(normalized)) return true;
+    }
+    if (member.uuid) {
+      if (requiredUuids.has(member.uuid)) return true;
+    }
+    return false;
   });
 
   membershipCache.set(cacheKey, { allowed, cachedAt: now });

@@ -140,6 +140,66 @@ describe("checkGroupHasRequiredMember", () => {
     expect(result).toBe(true);
   });
 
+  it("matches by UUID when entry is a UUID", async () => {
+    mockRpc.mockResolvedValueOnce([
+      makeGroup("abc123", [
+        { number: "+15551111111", uuid: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" },
+        { number: "+15552222222", uuid: "11111111-2222-3333-4444-555555555555" },
+      ]),
+    ]);
+
+    const result = await checkGroupHasRequiredMember(
+      "abc123",
+      ["11111111-2222-3333-4444-555555555555"],
+      BASE_OPTS,
+    );
+    expect(result).toBe(true);
+  });
+
+  it("matches by UUID with uuid: prefix", async () => {
+    mockRpc.mockResolvedValueOnce([
+      makeGroup("abc123", [
+        { number: "+15551111111", uuid: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" },
+      ]),
+    ]);
+
+    const result = await checkGroupHasRequiredMember(
+      "abc123",
+      ["uuid:a1b2c3d4-e5f6-7890-abcd-ef1234567890"],
+      BASE_OPTS,
+    );
+    expect(result).toBe(true);
+  });
+
+  it("matches with mixed phone numbers and UUIDs", async () => {
+    mockRpc.mockResolvedValueOnce([
+      makeGroup("abc123", [
+        { number: "+15559999999", uuid: "deadbeef-0000-1111-2222-333333333333" },
+      ]),
+    ]);
+
+    // Phone doesn't match, but UUID does
+    const result = await checkGroupHasRequiredMember(
+      "abc123",
+      ["+15551111111", "deadbeef-0000-1111-2222-333333333333"],
+      BASE_OPTS,
+    );
+    expect(result).toBe(true);
+  });
+
+  it("supports wildcard '*' entry", async () => {
+    mockRpc.mockResolvedValueOnce([
+      makeGroup("abc123", []),
+    ]);
+
+    const result = await checkGroupHasRequiredMember(
+      "abc123",
+      ["*"],
+      BASE_OPTS,
+    );
+    expect(result).toBe(true);
+  });
+
   it("caches membership results", async () => {
     mockRpc.mockResolvedValue([
       makeGroup("abc123", [
