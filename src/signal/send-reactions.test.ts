@@ -27,7 +27,12 @@ vi.mock("./client.js", () => ({
 
 describe("sendReactionSignal", () => {
   beforeEach(() => {
-    rpcMock.mockReset().mockResolvedValue({ timestamp: 123 });
+    rpcMock.mockReset().mockImplementation((method: string) => {
+      if (method === "listGroups") {
+        return [{ id: "group-id", name: "Test Group", isMember: true, isBlocked: false }];
+      }
+      return { timestamp: 123 };
+    });
     vi.resetModules();
   });
 
@@ -51,7 +56,10 @@ describe("sendReactionSignal", () => {
       targetAuthorUuid: "uuid:123e4567-e89b-12d3-a456-426614174000",
     });
 
-    const params = rpcMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    // First call is listGroups (to resolve group ID), second is sendReaction
+    const sendCall = rpcMock.mock.calls.find((call: unknown[]) => call[0] === "sendReaction");
+    expect(sendCall).toBeDefined();
+    const params = sendCall![1] as Record<string, unknown>;
     expect(params.recipients).toBeUndefined();
     expect(params.groupIds).toEqual(["group-id"]);
     expect(params.targetAuthor).toBe("123e4567-e89b-12d3-a456-426614174000");

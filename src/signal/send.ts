@@ -6,6 +6,7 @@ import { loadWebMedia } from "../web/media.js";
 import { resolveSignalAccount } from "./accounts.js";
 import { signalRpcRequest } from "./client.js";
 import { markdownToSignalText, type SignalTextStyleRange } from "./format.js";
+import { resolveSignalGroupId } from "./groups.js";
 
 export type SignalSendOpts = {
   baseUrl?: string;
@@ -141,7 +142,15 @@ export async function sendMessageSignal(
     accountId: opts.accountId,
   });
   const { baseUrl, account } = resolveSignalRpcContext(opts, accountInfo);
-  const target = parseTarget(to);
+  let target = parseTarget(to);
+
+  // Resolve potentially-lowercased group IDs back to the canonical case.
+  // Session keys lowercase group IDs, but signal-cli needs the original base64.
+  if (target.type === "group") {
+    const resolvedId = await resolveSignalGroupId(target.groupId, { baseUrl, account });
+    target = { type: "group", groupId: resolvedId };
+  }
+
   let message = text ?? "";
   let messageFromPlaceholder = false;
   let textStyles: SignalTextStyleRange[] = [];
@@ -229,7 +238,12 @@ export async function sendTypingSignal(
   opts: SignalRpcOpts & { stop?: boolean } = {},
 ): Promise<boolean> {
   const { baseUrl, account } = resolveSignalRpcContext(opts);
-  const targetParams = buildTargetParams(parseTarget(to), {
+  let target = parseTarget(to);
+  if (target.type === "group") {
+    const resolvedId = await resolveSignalGroupId(target.groupId, { baseUrl, account });
+    target = { type: "group", groupId: resolvedId };
+  }
+  const targetParams = buildTargetParams(target, {
     recipient: true,
     group: true,
   });

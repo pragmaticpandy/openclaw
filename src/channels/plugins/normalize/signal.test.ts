@@ -14,6 +14,22 @@ describe("signal target normalization", () => {
     );
   });
 
+  it("preserves case for base64 group IDs", () => {
+    expect(
+      normalizeSignalMessagingTarget("group:U5j3qMO2YF2HLJlMq3UdDWBbCD8eJ3RjtG+JCN/uVwM="),
+    ).toBe("group:U5j3qMO2YF2HLJlMq3UdDWBbCD8eJ3RjtG+JCN/uVwM=");
+  });
+
+  it("preserves case for group IDs with signal: prefix", () => {
+    expect(
+      normalizeSignalMessagingTarget("signal:group:U5j3qMO2YF2HLJlMq3UdDWBbCD8eJ3RjtG+JCN/uVwM="),
+    ).toBe("group:U5j3qMO2YF2HLJlMq3UdDWBbCD8eJ3RjtG+JCN/uVwM=");
+  });
+
+  it("normalizes phone number targets", () => {
+    expect(normalizeSignalMessagingTarget("+15132017285")).toBe("+15132017285");
+  });
+
   it("accepts uuid prefixes for target detection", () => {
     expect(looksLikeSignalTargetId("uuid:123e4567-e89b-12d3-a456-426614174000")).toBe(true);
     expect(looksLikeSignalTargetId("signal:uuid:123e4567-e89b-12d3-a456-426614174000")).toBe(true);
@@ -27,5 +43,14 @@ describe("signal target normalization", () => {
   it("rejects invalid uuid prefixes", () => {
     expect(looksLikeSignalTargetId("uuid:")).toBe(false);
     expect(looksLikeSignalTargetId("uuid:not-a-uuid")).toBe(false);
+  });
+
+  it("accepts group targets for target detection", () => {
+    expect(looksLikeSignalTargetId("group:U5j3qMO2YF2HLJlMq3UdDWBbCD8eJ3RjtG+JCN/uVwM=")).toBe(
+      true,
+    );
+    expect(
+      looksLikeSignalTargetId("signal:group:U5j3qMO2YF2HLJlMq3UdDWBbCD8eJ3RjtG+JCN/uVwM="),
+    ).toBe(true);
   });
 });
