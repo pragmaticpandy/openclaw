@@ -5,6 +5,7 @@
 import { loadConfig } from "../config/config.js";
 import { resolveSignalAccount } from "./accounts.js";
 import { signalRpcRequest } from "./client.js";
+import { resolveSignalGroupId } from "./groups.js";
 
 export type SignalReactionOpts = {
   baseUrl?: string;
@@ -101,7 +102,7 @@ export async function sendReactionSignal(
   const { baseUrl, account } = resolveReactionRpcContext(opts, accountInfo);
 
   const normalizedRecipient = normalizeSignalUuid(recipient);
-  const groupId = opts.groupId?.trim();
+  let groupId = opts.groupId?.trim() || undefined;
   if (!normalizedRecipient && !groupId) {
     throw new Error("Recipient or groupId is required for Signal reaction");
   }
@@ -110,6 +111,11 @@ export async function sendReactionSignal(
   }
   if (!emoji?.trim()) {
     throw new Error("Emoji is required for Signal reaction");
+  }
+
+  // Resolve potentially-lowercased group IDs back to canonical case
+  if (groupId) {
+    groupId = await resolveSignalGroupId(groupId, { baseUrl, account });
   }
 
   const targetAuthorParams = resolveTargetAuthorParams({
@@ -167,7 +173,7 @@ export async function removeReactionSignal(
   const { baseUrl, account } = resolveReactionRpcContext(opts, accountInfo);
 
   const normalizedRecipient = normalizeSignalUuid(recipient);
-  const groupId = opts.groupId?.trim();
+  let groupId = opts.groupId?.trim() || undefined;
   if (!normalizedRecipient && !groupId) {
     throw new Error("Recipient or groupId is required for Signal reaction removal");
   }
@@ -176,6 +182,11 @@ export async function removeReactionSignal(
   }
   if (!emoji?.trim()) {
     throw new Error("Emoji is required for Signal reaction removal");
+  }
+
+  // Resolve potentially-lowercased group IDs back to canonical case
+  if (groupId) {
+    groupId = await resolveSignalGroupId(groupId, { baseUrl, account });
   }
 
   const targetAuthorParams = resolveTargetAuthorParams({
